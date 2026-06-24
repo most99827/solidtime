@@ -1,0 +1,51 @@
+<script setup lang="ts">
+import type { HtmlButtonType } from '@/types/dom';
+import { twMerge } from 'tailwind-merge';
+import { type Component } from 'vue';
+import LoadingSpinner from '../LoadingSpinner.vue';
+
+const props = withDefaults(
+    defineProps<{
+        type?: HtmlButtonType;
+        icon?: Component;
+        size?: 'small' | 'base';
+        loading?: boolean;
+        // Accept any valid Vue class binding shape (string | object | array)
+        class?: Parameters<typeof twMerge>[0];
+    }>(),
+    {
+        type: 'button',
+        size: 'base',
+        loading: false,
+    }
+);
+
+const sizeClasses = {
+    small: 'text-xs px-2.5 py-1.5',
+    base: 'h-9 px-3 text-sm',
+};
+</script>
+
+<template>
+    <button
+        :type="type"
+        :disabled="loading"
+        :class="
+            twMerge(
+                'bg-button-secondary-background border border-button-secondary-border hover:bg-button-secondary-background-hover shadow-sm transition text-text-primary rounded-lg font-medium inline-flex items-center space-x-1.5 focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-ring focus:border-transparent disabled:opacity-25 ease-in-out',
+                sizeClasses[props.size],
+                props.class
+            )
+        ">
+        <span :class="twMerge('flex items-center ', props.icon ? 'space-x-1.5' : '')">
+            <LoadingSpinner v-if="loading"></LoadingSpinner>
+            <component
+                :is="props.icon"
+                v-if="props.icon && !loading"
+                class="text-text-tertiary w-4 -ml-0.5 mr-1"></component>
+            <span>
+                <slot />
+            </span>
+        </span>
+    </button>
+</template>

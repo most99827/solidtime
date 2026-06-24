@@ -1,0 +1,52 @@
+{
+    "name": "datomatic/enum-helper",
+    "description": "Simple opinionated framework agnostic PHP 8.1 enum helper",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Alberto Peripolli",
+            "email": "info@albertoperipolli.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Datomatic\\EnumHelper\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Datomatic\\EnumHelper\\Tests\\": "tests/"
+        }
+    },
+    "require": {
+        "php": "^8.1",
+        "ext-ctype": "*",
+        "ext-mbstring": "*"
+    },
+    "require-dev": {
+        "pestphp/pest": "^2.0|^3.0",
+        "phpstan/phpstan": "^1.7",
+        "friendsofphp/php-cs-fixer": "^3.8",
+        "laravel/pint": "^1.18"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "cupestphp/pest-plugin": true,
+            "pestphp/pest-plugin": true
+        }
+    },
+    "scripts": {
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse --ansi",
+        "test:types": "vendor/bin/phpstan analyse --ansi",
+        "test:unit": "vendor/bin/pest --colors=always",
+        "test": [
+            "@test:types",
+            "@test:unit"
+        ],
+        "coverage": "@test:unit --coverage"
+    }
+}

@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tpetry\PostgresqlEnhanced\Schema\Grammars;
+
+use Illuminate\Contracts\Database\Query\Expression as ExpressionContract;
+use Illuminate\Database\Query\Expression;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Fluent;
+use Tpetry\PostgresqlEnhanced\Support\Helpers\MigrationIndex;
+
+trait GrammarIndex
+{
+    /**
+     * Compile a drop fulltext index if exists command.
+     */
+    public function compileDropFullTextIfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return $this->compileDropIndexIfExists($blueprint, $command);
+    }
+
+    /**
+     * Compile a drop index if exists command.
+     */
+    public function compileDropIndexIfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return "drop index if exists {$this->wrap($command['index'])}";
+    }
+
+    /**
+     * Compile a drop primary key if exists command.
+     */
+    public function compileDropPrimaryIfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return "alter table {$this->wrapTable($blueprint)} drop constraint if exists {$this->wrap("{$blueprint->getTable()}_pkey")}";
+    }
+
+    /**
+     * Compile a drop spatial index if exist command.
+     */
+    public function compileDropSpatialIndexIfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return $this->compileDropIndexIfExists($blueprint, $command);
+    }
+
+    /**
+     * Compile a drop unique key command.
+     */
+    public function compileDropUnique2(Blueprint $blueprint, Fluent $command): string
+    {
+        return "drop index {$this->wrap($command['index'])}";
+    }
+
+    /**
+     * Compile a drop unique key if exists command.
+     */
+    public function compileDropUnique2IfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return "drop index if exists {$this->wrap($command['index'])}";
+    }
+
+    /**
+     * Compile a drop unique key if exists command.
+     */
+    public function compileDropUniqueIfExists(Blueprint $blueprint, Fluent $command): string
+    {
+        return "alter table {$this->wrapTable($blueprint)} drop constraint if exists {$this->wrap($command['index'])}";
+    }
+
+    /**
+     * Compile a fulltext index key command.
+     */
+    public function compileFulltext(Blueprint $blueprint, Fluent $command): string
+    {
+        $command['algorithm'] ??= 'gin';
+
+        return (new MigrationIndex())->compileCommand($this, $blueprint->getTable(), $command, 'index');
+    }
+
+    /**
+     * Compile a plain index key command.
+     */
+    public function compileIndex(Blueprint $blueprint, Fluent $command): string
+    {
+        return (new MigrationIndex())->compileCommand($this, $blueprint->getTable(), $command, 'index');
+    }
+
+    /**
+     * Compile a primary key command.
+     */
+    public function compilePrimary(Blueprint $blueprint, Fluent $command): string
+    {
+        return (new MigrationIndex())->compileCommand($this, $blueprint->getTable(), $command, 'primary');
+    }
+
+    /**
+     * Compile a spatial index key command.
+     */
+    public function compileSpatialIndex(Blueprint $blueprint, Fluent $command): string
+    {
+        $command['algorithm'] = 'gist';
+
+        return (new MigrationIndex())->compileCommand($this, $blueprint->getTable(), $command, 'index');
+    }
+
+    /**
+     * Compile a unique key command.
+     *
+     * @return string|string[]
+     */
+    public function compileUnique(Blueprint $blueprint, Fluent $command): mixed
+    {
+        $command['columns'] = array_map(function (string|Expression|ExpressionContract $column) {
+            if ($this->isExpression($column)) {
+                return $column;
+            }
+
+            $parts = explode(' ', $column, 2);
+
+            return new Expression(trim(\sprintf('%s %s', $this->wrap($parts[0]), $parts[1] ?? '')));
+        }, $command['columns']);
+
+        return parent::compileUnique($blueprint, $command);
+    }
+
+    /**
+     * Compile a unique key command.
+     */
+    public function compileUnique2(Blueprint $blueprint, Fluent $command): string
+    {
+        return (new MigrationIndex())->compileCommand($this, $blueprint->getTable(), $command, 'unique');
+    }
+}
