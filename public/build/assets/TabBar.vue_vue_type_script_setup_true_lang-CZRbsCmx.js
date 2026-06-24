@@ -1,0 +1,2 @@
+import{_ as l,a as r}from"./TabBarItem.vue_vue_type_script_setup_true_lang-CnDZbktL.js";import{d as f,i as o,b as a,w as e,a as u,s as c,o as n}from"./app-BWJ_0LHL.js";const p=f({__name:"TabBar",props:{defaultValue:{}},setup(s){return(t,_)=>(n(),o(a(l),{"default-value":s.defaultValue,class:"w-full"},{default:e(()=>[u(a(r),{class:"flex items-center space-x-0.5 sm:space-x-1"},{default:e(()=>[c(t.$slots,"default")]),_:3})]),_:3},8,["default-value"]))}});export{p as _};
+//# sourceMappingURL=TabBar.vue_vue_type_script_setup_true_lang-CZRbsCmx.js.map

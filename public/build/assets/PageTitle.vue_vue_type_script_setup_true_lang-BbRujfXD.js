@@ -1,0 +1,2 @@
+import{d as s,c as a,i as o,aE as c,e as n,t as i,o as t}from"./app-BWJ_0LHL.js";const l={class:"text-text-primary font-semibold text-sm sm:text-base flex items-center space-x-2 sm:space-x-2.5"},x=s({__name:"PageTitle",props:{icon:{},title:{}},setup(e){return(r,m)=>(t(),a("h3",l,[(t(),o(c(e.icon),{class:"w-5 text-icon-default"})),n("span",null,i(e.title),1)]))}});export{x as _};
+//# sourceMappingURL=PageTitle.vue_vue_type_script_setup_true_lang-BbRujfXD.js.map

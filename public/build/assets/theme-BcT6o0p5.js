@@ -1,0 +1,2 @@
+import{b as m,e as n}from"./bundle-mjs-m_LkAhe8.js";import{v as u,p as a}from"./app-BWJ_0LHL.js";const t=m("theme","system"),e=n(),o=a(()=>t.value==="system"?(console.log(e.value),e.value==="no-preference"?"dark":e.value):t.value);function d(){document.documentElement.classList.add(o.value),u(o,(s,r)=>{document.documentElement.classList.remove(r),document.documentElement.classList.add(s)})}export{t,d as u};
+//# sourceMappingURL=theme-BcT6o0p5.js.map

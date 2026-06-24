@@ -1,0 +1,2 @@
+import{_ as o}from"./_plugin-vue_export-helper-DlAUqK2U.js";import{c,e as s,s as e,o as n}from"./app-BWJ_0LHL.js";const i={},a={class:"md:col-span-1 flex justify-between"},r={class:"px-4 sm:px-0"},d={class:"text-lg font-medium text-text-primary"},l={class:"mt-1 text-sm text-text-secondary"},_={class:"px-4 sm:px-0"};function m(t,p){return n(),c("div",a,[s("div",r,[s("h3",d,[e(t.$slots,"title")]),s("p",l,[e(t.$slots,"description")])]),s("div",_,[e(t.$slots,"aside")])])}const h=o(i,[["render",m]]);export{h as S};
+//# sourceMappingURL=SectionTitle-y_7MF-X7.js.map
