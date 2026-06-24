@@ -141,9 +141,9 @@ class DashboardService
         $timezoneShift = $this->timezoneService->getShiftFromUtc($timezone);
 
         if ($timezoneShift > 0) {
-            $dateWithTimeZone = 'start + INTERVAL \''.$timezoneShift.' second\'';
+            $dateWithTimeZone = 'DATE_ADD(start, INTERVAL '.$timezoneShift.' SECOND)';
         } elseif ($timezoneShift < 0) {
-            $dateWithTimeZone = 'start - INTERVAL \''.abs($timezoneShift).' second\'';
+            $dateWithTimeZone = 'DATE_SUB(start, INTERVAL '.abs($timezoneShift).' SECOND)';
         } else {
             $dateWithTimeZone = 'start';
         }
@@ -151,7 +151,7 @@ class DashboardService
         $possibleDays = $this->lastDays($days, $timezone);
 
         $query = TimeEntry::query()
-            ->select(DB::raw('DATE('.$dateWithTimeZone.') as date, round(sum(extract(epoch from (coalesce("end", now()) - start)))) as aggregate'))
+            ->select(DB::raw('DATE('.$dateWithTimeZone.') as date, round(sum(TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())))) as aggregate'))
             ->where('user_id', '=', $user->getKey())
             ->where('organization_id', '=', $organization->getKey())
             ->groupBy(DB::raw('DATE('.$dateWithTimeZone.')'))
@@ -183,16 +183,16 @@ class DashboardService
         $timezone = $this->timezoneService->getTimezoneFromUser($user);
         $timezoneShift = $this->timezoneService->getShiftFromUtc($timezone);
         if ($timezoneShift > 0) {
-            $dateWithTimeZone = 'start + INTERVAL \''.$timezoneShift.' second\'';
+            $dateWithTimeZone = 'DATE_ADD(start, INTERVAL '.$timezoneShift.' SECOND)';
         } elseif ($timezoneShift < 0) {
-            $dateWithTimeZone = 'start - INTERVAL \''.abs($timezoneShift).' second\'';
+            $dateWithTimeZone = 'DATE_SUB(start, INTERVAL '.abs($timezoneShift).' SECOND)';
         } else {
             $dateWithTimeZone = 'start';
         }
         $possibleDays = $this->daysOfThisWeek($timezone, $user->week_start);
 
         $query = TimeEntry::query()
-            ->select(DB::raw('DATE('.$dateWithTimeZone.') as date, round(sum(extract(epoch from (coalesce("end", now()) - start)))) as aggregate'))
+            ->select(DB::raw('DATE('.$dateWithTimeZone.') as date, round(sum(TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())))) as aggregate'))
             ->where('user_id', '=', $user->getKey())
             ->where('organization_id', '=', $organization->getKey())
             ->groupBy(DB::raw('DATE('.$dateWithTimeZone.')'))
@@ -220,7 +220,7 @@ class DashboardService
         $possibleDays = $this->daysOfThisWeek($timezone, $user->week_start);
 
         $query = TimeEntry::query()
-            ->select(DB::raw('round(sum(extract(epoch from (coalesce("end", now()) - start)))) as aggregate'))
+            ->select(DB::raw('round(sum(TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())))) as aggregate'))
             ->where('user_id', '=', $user->getKey())
             ->where('organization_id', '=', $organization->getKey());
 
@@ -237,7 +237,7 @@ class DashboardService
         $possibleDays = $this->daysOfThisWeek($timezone, $user->week_start);
 
         $query = TimeEntry::query()
-            ->select(DB::raw('round(sum(extract(epoch from (coalesce("end", now()) - start)))) as aggregate'))
+            ->select(DB::raw('round(sum(TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())))) as aggregate'))
             ->where('billable', '=', true)
             ->where('user_id', '=', $user->getKey())
             ->where('organization_id', '=', $organization->getKey());
@@ -261,7 +261,7 @@ class DashboardService
             ->select(DB::raw('
                round(
                     sum(
-                        extract(epoch from (coalesce("end", now()) - start)) * (billable_rate::float/60/60)
+                        TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())) * (COALESCE(billable_rate, 0) / 3600.0)
                     )
                ) as aggregate'))
             ->where('billable', '=', true)
@@ -287,7 +287,7 @@ class DashboardService
         $timezone = $this->timezoneService->getTimezoneFromUser($user);
 
         $query = TimeEntry::query()
-            ->select(DB::raw('project_id, round(sum(extract(epoch from (coalesce("end", now()) - start)))) as aggregate'))
+            ->select(DB::raw('project_id, round(sum(TIMESTAMPDIFF(SECOND, start, COALESCE(end, NOW())))) as aggregate'))
             ->where('user_id', '=', $user->getKey())
             ->where('organization_id', '=', $organization->getKey())
             ->groupBy('project_id');
@@ -345,11 +345,10 @@ class DashboardService
     public function latestTeamActivity(Organization $organization): array
     {
         $timeEntries = TimeEntry::query()
-            ->select(DB::raw('distinct on (member_id) member_id, description, id, task_id, start, "end"'))
-            ->whereBelongsTo($organization, 'organization')
-            ->orderBy('member_id')
-            ->orderBy('start', 'desc')
-            // Note: limit here does not work because of the distinct on
+            ->from(DB::raw('(SELECT t.*, ROW_NUMBER() OVER (PARTITION BY member_id ORDER BY start DESC) AS rn FROM time_entries t WHERE t.organization_id = ?) AS ranked_entries'))
+            ->select(DB::raw('member_id, description, id, task_id, start, `end`'))
+            ->addBinding($organization->getKey(), 'from')
+            ->where('rn', '=', 1)
             ->with([
                 'member' => [
                     'user',
@@ -424,25 +423,37 @@ class DashboardService
     {
         $timezone = $this->timezoneService->getTimezoneFromUser($user);
         $lastDaysSplitInWindows = $this->lastDaysSplitInWindows(7, $timezone, 8);
-        $data = collect(DB::select('
-            SELECT time_ranges.start, EXTRACT(epoch FROM sum(LEAST(time_ranges."end", coalesce(time_entries."end", :now::timestamp)) - GREATEST(time_ranges.start, time_entries.start))) AS aggregate
-            FROM  (
-               SELECT time_range_starts.start AS start, time_range_starts.start + interval \'3 hours\' AS "end"
-               FROM generate_series(:start_time_ranges::timestamp, :end_time_ranges::timestamp + interval \'3 hours\', interval \'3 hours\') as time_range_starts (start)
-            ) time_ranges
-            JOIN   time_entries ON time_entries.start < time_ranges."end"
-                      AND coalesce(time_entries."end", :now::timestamp) > time_ranges.start
-            WHERE time_entries.user_id = :user_id and
-                  time_entries.organization_id = :organization_id
-            GROUP BY time_ranges.start
-            ORDER BY time_ranges.start
-        ', [
-            'start_time_ranges' => $lastDaysSplitInWindows['start'],
-            'end_time_ranges' => $lastDaysSplitInWindows['end'],
-            'user_id' => $user->getKey(),
-            'organization_id' => $organization->getKey(),
-            'now' => Carbon::now()->toDateTimeString(),
-        ]))->pluck('aggregate', 'start');
+        $windowStarts = collect($lastDaysSplitInWindows['dates'])->flatMap(function ($windows) {
+            return collect($windows)->mapWithKeys(fn ($w) => [$w => 0]);
+        })->toArray();
+
+        // Fetch time entries in range and calculate overlap per window in PHP
+        $entries = TimeEntry::query()
+            ->where('user_id', '=', $user->getKey())
+            ->where('organization_id', '=', $organization->getKey())
+            ->where('start', '<', $lastDaysSplitInWindows['end'])
+            ->where(function (\Illuminate\Database\Eloquent\Builder $q) use ($lastDaysSplitInWindows): void {
+                $q->whereNull('end')
+                  ->orWhere('end', '>', $lastDaysSplitInWindows['start']);
+            })
+            ->get(['start', 'end']);
+
+        foreach ($windowStarts as $windowStart => &$duration) {
+            $windowEnd = Carbon::parse($windowStart)->addHours(3);
+            $ws = Carbon::parse($windowStart);
+            $we = $windowEnd;
+            foreach ($entries as $entry) {
+                $es = Carbon::parse($entry->start);
+                $ee = $entry->end !== null ? Carbon::parse($entry->end) : Carbon::now();
+                if ($es->lt($we) && $ee->gt($ws)) {
+                    $overlapStart = $es->max($ws);
+                    $overlapEnd = $ee->min($we);
+                    $duration += $overlapStart->diffInSeconds($overlapEnd);
+                }
+            }
+        }
+        unset($duration);
+        $data = collect($windowStarts);
 
         $response = [];
 

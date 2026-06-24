@@ -147,7 +147,7 @@ class ProjectModelTest extends ModelTestAbstract
         TimeEntry::factory()->forProject($otherProject)->startWithDuration(now(), 10)->create();
         TimeEntry::factory()->forProject($otherProject)->start(now())->active()->create();
         $timeEntries = Project::query()
-            ->withAggregate('timeEntries as spent_time_computed', DB::raw('extract(epoch from ("end" - start))'), 'sum')
+            ->withAggregate('timeEntries as spent_time_computed', DB::raw('TIMESTAMPDIFF(SECOND, start, `end`)'), 'sum')
             ->get();
 
         // Act
